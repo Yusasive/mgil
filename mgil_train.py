@@ -10,6 +10,7 @@ Usage:
 Output:
     models/lstm_model.keras
     models/rf_model.pkl
+    models/solar_rf_model.pkl   ← NEW: ML solar generation forecast model
     models/scaler.pkl
     models/training_report.txt
 """
@@ -59,6 +60,32 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     # Lag features (hours back)
     for lag in [1, 2, 3, 6, 12, 24]:
         df[f"lag_{lag}h"] = df["load_kw"].shift(lag)
+
+    df.dropna(inplace=True)
+    return df
+
+
+def add_solar_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add features for solar generation forecasting.
+    Solar is driven by time-of-day, season, and lag irradiance patterns.
+    """
+    df = df.copy()
+    df["hour"]           = df.index.hour
+    df["month"]          = df.index.month
+    df["dayofyear"]      = df.index.dayofyear
+    df["is_harmattan"]   = df["month"].isin([11, 12, 1, 2]).astype(int)
+
+    # Solar angle proxy: sin of hour rescaled to daytime window
+    # Peaks at solar noon (~13:00 Nigerian Standard Time)
+    df["solar_angle"]    = np.sin(np.pi * (df["hour"] - 6) / 12).clip(0)
+
+    # Day length varies with season (proxy via dayofyear cosine)
+    df["day_length"]     = 1.0 + 0.1 * np.cos(2 * np.pi * (df["dayofyear"] - 172) / 365)
+
+    # Lag solar readings (detect cloud patterns)
+    for lag in [1, 2, 3]:
+        df[f"solar_lag_{lag}h"] = df["solar_kw"].shift(lag)
 
     df.dropna(inplace=True)
     return df
@@ -201,8 +228,8 @@ def train(data_path: str | None = None):
     train_df, test_df = df.iloc[:split], df.iloc[split:]
     print(f"      Train: {len(train_df):,} h  |  Test: {len(test_df):,} h")
 
-    # 3. Random Forest
-    print("\n[3/5] Training Random Forest (200 trees)...")
+    # 3. Random Forest (load)
+    print("\n[3/6] Training Load Random Forest (200 trees)...")
     X_train = train_df[FEATURE_COLS].values
     y_train = train_df[TARGET].values
     X_test  = test_df[FEATURE_COLS].values
@@ -220,8 +247,47 @@ def train(data_path: str | None = None):
     rf_mape  = mean_absolute_percentage_error(y_test, rf_pred) * 100
     print(f"      RF MAPE on test set: {rf_mape:.2f}%")
 
-    # 4. LSTM
-    print("\n[4/5] Training LSTM (2-layer, 64+32 units)...")
+    # 4. Solar RF
+    print("\n[4/6] Training Solar Generation Random Forest (100 trees)...")
+    SOLAR_FEATURE_COLS = [
+        "hour", "month", "dayofyear", "is_harmattan",
+        "solar_angle", "day_length",
+        "solar_lag_1h", "solar_lag_2h", "solar_lag_3h",
+    ]
+    df_solar = add_solar_features(df[["load_kw", "solar_kw"]].copy())
+    solar_split = int(len(df_solar) * 0.8)
+    solar_train = df_solar.iloc[:solar_split]
+    solar_test  = df_solar.iloc[solar_split:]
+
+    Xs_train = solar_train[SOLAR_FEATURE_COLS].values
+    ys_train = solar_train["solar_kw"].values
+    Xs_test  = solar_test[SOLAR_FEATURE_COLS].values
+    ys_test  = solar_test["solar_kw"].values
+
+    solar_rf = RandomForestRegressor(
+        n_estimators=100,
+        max_depth=12,
+        min_samples_leaf=2,
+        n_jobs=-1,
+        random_state=42,
+    )
+    solar_rf.fit(Xs_train, ys_train)
+    solar_pred = solar_rf.predict(Xs_test)
+
+    # Clip negatives — solar can't be negative
+    solar_pred  = np.clip(solar_pred, 0, None)
+    # MAPE only on daytime hours (avoid division by near-zero at night)
+    daytime_mask = ys_test > 1.0
+    if daytime_mask.sum() > 0:
+        solar_mape = mean_absolute_percentage_error(
+            ys_test[daytime_mask], solar_pred[daytime_mask]
+        ) * 100
+    else:
+        solar_mape = 0.0
+    print(f"      Solar RF MAPE (daytime hours): {solar_mape:.2f}%")
+
+    # 5. LSTM
+    print("\n[5/6] Training LSTM (2-layer, 64+32 units)...")
     scaler = MinMaxScaler()
     load_scaled = scaler.fit_transform(df[[TARGET]]).flatten()
 
@@ -254,14 +320,17 @@ def train(data_path: str | None = None):
     lstm_mape = mean_absolute_percentage_error(lstm_actual, lstm_pred) * 100
     print(f"      LSTM MAPE on test set: {lstm_mape:.2f}%")
 
-    # 5. Save models
-    print("\n[5/5] Saving models...")
+    # 6. Save models
+    print("\n[6/6] Saving models...")
     lstm_path  = os.path.join(MODELS_DIR, "lstm_model.keras")
     rf_path    = os.path.join(MODELS_DIR, "rf_model.pkl")
     scaler_path = os.path.join(MODELS_DIR, "scaler.pkl")
 
+    solar_rf_path = os.path.join(MODELS_DIR, "solar_rf_model.pkl")
+
     lstm_model.save(lstm_path)
     joblib.dump(rf, rf_path)
+    joblib.dump(solar_rf, solar_rf_path)
     joblib.dump(scaler, scaler_path)
 
     # Save metadata
@@ -272,7 +341,9 @@ def train(data_path: str | None = None):
         "test_samples": len(test_df),
         "rf_mape": round(rf_mape, 4),
         "lstm_mape": round(lstm_mape, 4),
+        "solar_rf_mape": round(solar_mape, 4),
         "feature_cols": FEATURE_COLS,
+        "solar_feature_cols": SOLAR_FEATURE_COLS,
         "seq_len": SEQ_LEN,
     }
     meta_path = os.path.join(MODELS_DIR, "meta.json")
@@ -289,13 +360,15 @@ Test samples:   {meta['test_samples']:,} hours
 
 Model Performance
 -----------------
-Random Forest MAPE:  {rf_mape:.2f}%
-LSTM MAPE:           {lstm_mape:.2f}%
+Load Random Forest MAPE:   {rf_mape:.2f}%
+Load LSTM MAPE:            {lstm_mape:.2f}%
+Solar RF MAPE (daytime):   {solar_mape:.2f}%
 
 Saved Files
 -----------
 {lstm_path}
 {rf_path}
+{solar_rf_path}
 {scaler_path}
 {meta_path}
 """
@@ -305,11 +378,13 @@ Saved Files
 
     print(f"\n  ✓  lstm_model.keras")
     print(f"  ✓  rf_model.pkl")
+    print(f"  ✓  solar_rf_model.pkl")
     print(f"  ✓  scaler.pkl")
     print(f"  ✓  meta.json")
     print(f"  ✓  training_report.txt")
-    print(f"\n  RF MAPE : {rf_mape:.2f}%")
-    print(f"  LSTM MAPE: {lstm_mape:.2f}%")
+    print(f"\n  Load RF MAPE:         {rf_mape:.2f}%")
+    print(f"  Load LSTM MAPE:       {lstm_mape:.2f}%")
+    print(f"  Solar RF MAPE:        {solar_mape:.2f}%")
     print("\n  Training complete. Run mgil_predict.py to forecast.\n")
 
 

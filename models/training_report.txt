@@ -1,18 +1,20 @@
 MGIL Training Report
 ====================
-Date:           2026-10-13T16:37:59.943978
+Date:           2026-10-13T20:21:23.552254
 Data source:    synthetic
 Train samples:  6,988 hours
 Test samples:   1,748 hours
 
 Model Performance
 -----------------
-Random Forest MAPE:  11.90%
-LSTM MAPE:           9.45%
+Load Random Forest MAPE:   11.90%
+Load LSTM MAPE:            9.49%
+Solar RF MAPE (daytime):   32.05%
 
 Saved Files
 -----------
 /Users/Yusasive/Documents/python/mdil/models/lstm_model.keras
 /Users/Yusasive/Documents/python/mdil/models/rf_model.pkl
+/Users/Yusasive/Documents/python/mdil/models/solar_rf_model.pkl
 /Users/Yusasive/Documents/python/mdil/models/scaler.pkl
 /Users/Yusasive/Documents/python/mdil/models/meta.json
