@@ -1,0 +1,11 @@
+# MGIL — Mini-Grid Intelligence Layer
+# Requirements for Python 3.11
+# Install with: pip install -r requirements.txt
+
+numpy==1.26.4
+pandas==2.2.2
+scikit-learn==1.5.1
+joblib==1.4.2
+tensorflow==2.17.0
+keras==3.4.1
+matplotlib==3.9.1

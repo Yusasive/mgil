@@ -1,0 +1,23 @@
+{
+  "trained_on": "2026-10-13T16:37:59.943978",
+  "data_source": "synthetic",
+  "train_samples": 6988,
+  "test_samples": 1748,
+  "rf_mape": 11.9002,
+  "lstm_mape": 9.4487,
+  "feature_cols": [
+    "hour",
+    "dayofweek",
+    "month",
+    "is_market_day",
+    "is_harmattan",
+    "is_harvest",
+    "lag_1h",
+    "lag_2h",
+    "lag_3h",
+    "lag_6h",
+    "lag_12h",
+    "lag_24h"
+  ],
+  "seq_len": 24
+}

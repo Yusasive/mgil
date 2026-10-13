@@ -1,0 +1,29 @@
+MGIL Daily Forecast Report
+===========================
+Generated:  2026-10-13 16:00
+Horizon:    17:00 → 16:00
+
+24-Hour Energy Summary
+----------------------
+Projected load:        786.6 kWh
+Solar generation:      417.5 kWh  (53.1% of load)
+BESS contribution:     97.5 kWh
+Diesel generation:     440.9 kWh
+Peak load:             40.1 kW  @ 2026-10-14 12:00
+
+SEMS State Distribution (hours)
+---------------------------------
+  DIESEL_REQUIRED      15 h
+  BESS_COVER            4 h
+  PRE_CHARGE            4 h
+  PV_SURPLUS            1 h
+
+BESS Status
+-----------
+Starting SoC:   65.0%
+Ending SoC:     73.8%
+
+Saved Files
+-----------
+/Users/Yusasive/Documents/python/mdil/forecast/forecast_2026-10-13.csv
+/Users/Yusasive/Documents/python/mdil/forecast/dispatch_2026-10-13.csv

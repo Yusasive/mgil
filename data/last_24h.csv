@@ -1,0 +1,2 @@
+datetime,load_kw,solar_kw,bess_soc,bess_kw,diesel_kw,grid_freq
+2026-10-13 16:00:00,32.74,21.52,53.5,-3.37,1.22,49.99
