@@ -247,9 +247,11 @@ Confirm the RS-485 adapter is detected: `ls /dev/ttyUSB*`. Check the slave ID an
 
 If you use MGIL in your research or deployment work, please cite:
 
-> Abdullahi Temidayo, Y. (2026). *A Machine Learning Framework for Predictive Load Forecasting and Smart Energy Management in Solar Hybrid Mini-Grids.* Russian-African Forum of Young Scientists, Saint Petersburg.
+> Abdullahi Yusuf T., Abdulyekeen Mustapha O., Lasisi Romoke A., & Abdulazeez Abdullah O. (2026). *A Machine Learning Framework for Predictive Load Forecasting and Smart Energy Management in Solar Hybrid Mini-Grids.* Russian-African Forum of Young Scientists, Saint Petersburg.
 
 ---
 
-*MGIL v1.0 — Yusuf Abdullahi Temidayo*  
+*MGIL v1.0*  
+*Abdullahi Yusuf Temidayo, Abdulyekeen Mustapha Olawale, Lasisi Romoke Adunbarin, Abdulazeez Abdullah Olakanmi*  
+*Graduate Students, University of Ilorin, Ilorin, Nigeria*  
 *Built for the DARES programme, Nigeria*
